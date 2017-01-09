@@ -1,0 +1,17 @@
+library(rvest)
+library(httr)
+library(jsonlite)
+library(stringr)
+library(data.table)
+library(plotly)
+source("getTables.R")
+source("plotTimeSeries.R")
+source("getActor.R")
+
+nicolasCageDT <- getActor("http://www.imdb.com/name/nm0000115",2009,"nicolasCageDT")
+burtReynoldsDT <- getActor("http://www.imdb.com/name/nm0000608",2014,"burtReynoldsDT")
+brendanFraserDT <- getActor("http://www.imdb.com/name/nm0000409",2007,"brendanFraserDT")
+kimBasingerDT <- getActor("http://www.imdb.com/name/nm0000107",1993,"kimBasingerDT")
+stephenBaldwinDT <- getActor("http://www.imdb.com/name/nm0000286",2009,"stephenBaldwinDT")
+garyBuseyDT <- getActor("http://www.imdb.com/name/nm0000997/",2012,"garyBuseyDT")
+
