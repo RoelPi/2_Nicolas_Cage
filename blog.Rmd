@@ -1,0 +1,184 @@
+---
+title: "The Rise and Fall of Nicolas Cage"
+author: "Roel Peters"
+date: "9 januari 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rvest)
+library(httr)
+library(jsonlite)
+library(stringr)
+library(data.table)
+library(plotly)
+library(e1071)
+library(boot)
+
+source("getTables.R")
+source("plotTimeSeries.R")
+source("getActor.R")
+
+Sys.setenv("plotly_username"="RoelPi")
+Sys.setenv("plotly_api_key"=readLines("plot.txt",n=1,warn=F))
+```
+
+## The Lord of War
+
+He is the "[Lord of War](http://www.imdb.com/title/tt0399295/)", he has [driven a 1971 Shelby Mustang GT500](http://www.imdb.com/title/tt0187078/), he (literally) got his [face swapped with John Travolta](http://www.imdb.com/title/tt0119094/) and he did a B&E into [Alcatraz](http://www.imdb.com/title/tt0117500/). Above all, he's won an Oscar in 1995: Nicolas Kim Coppola aka Nicolas Cage. If you were born in the late eighties or early nineties it is impossible not to have seen at least one Cage movie that you liked. Sadly, Nicolas Cage has also been to [an island with bee-obsessed inhabitants](http://www.imdb.com/title/tt0450345/), has driven a [motorcycle with his head on fire](http://www.imdb.com/title/tt0259324/) (twice) and [survived the apocalypse](https://en.wikipedia.org/wiki/Nicolas_Cage).
+
+The man known as the "[one true god](https://www.reddit.com/r/onetruegod/)" used to own [castles in Germany and England, an island in the bahamas, a dinosaur skull, 9 rolls royces](https://en.wikipedia.org/wiki/Nicolas_Cage) and a yacht named '[Sarita](http://financebuzz.io/finance-nicolas-cage-buying-spree)'. But the turbulent career and private life of Nicolas Cage had its largest bump when Cage went broke in 2009. Since then, it seems he's been rather unpicky regarding his roles. 
+
+What does the audience think of Mr. Cage's movies he acted in? The average user rating at the [Internet Movie Database](http://www.imdb.com) (IMDb) of the movies[^1] he acted in is 6.0. For reference, the average score of Leonardo DiCaprio is 7.2 and for Will Smith and Mel Gibson 6.5
+
+How the career of Nicolas Cage evolved can be seen in the following grap: since 2009, his movie ratings seem to be in a rather downward spiral.
+
+```{r plotData}
+    # Get data for Nicolas Cage, Mel Gibson, Leonardo Di Caprio and Will Smith
+    nicolasCageDT <- getActor("http://www.imdb.com/name/nm0000115",2009,"nicolasCageDT","Nicolas Cage")
+    melGibsonDT <- getActor("http://www.imdb.com/name/nm0000154/",0,"melGibsonDT","Mel Gibson")
+    leonardoDiCaprioDT <- getActor("http://www.imdb.com/name/nm0000138/",0,"leonardoDiCaprioDT","Leonardo DiCaprio")
+    willSmithDT <- getActor("http://www.imdb.com/name/nm0000226/",0,"willSmithDT","Will Smith")
+    casperVanDienDT <- getActor("http://www.imdb.com/name/nm0000680/",0,"casperVanDienDT","Casper Van Dien")
+    
+    # Get mean of all these actors for reference
+    mean(nicolasCageDT[[1]]$Rating)
+    mean(melGibsonDT[[1]]$Rating)
+    mean(leonardoDiCaprioDT[[1]]$Rating)
+    mean(willSmithDT[[1]]$Rating)
+    mean(casperVanDienDT[[1]]$Rating)
+    
+    # Generate first subplot - A scatter plot of all nicolas cage movies where x = year and y = rating
+    g <- ggplot(nicolasCageDT[[1]],aes(x=Year,y=Rating,label=Title)) + 
+        geom_point(aes(colour=Bankrupt),size=3) + 
+        geom_text(aes(label=Title),size=1.9,hjust=15, vjust=0,colour="black") +
+        theme(legend.position="none") +
+        scale_y_continuous(limits = c(0, 10))
+    p1 <- ggplotly(g) 
+    
+    # Generate second subplot - A time series line plot of all nicolas cage movies where x = year and y = rating
+    h <- ggplot(nicolasCageDT[[2]],aes(x=Year,y=Rating)) + 
+        geom_line() +
+        geom_point(aes(colour=Bankrupt)) +
+        geom_vline(xintercept=2009,colour="black",linetype="longdash") +
+        theme(legend.position="none") +
+        ggtitle("IMDb user rating of movies Nicolas Cage acted in")
+    p2 <- ggplotly(h)
+    
+    # Generate plots
+    f <- subplot(p1,p2,nrows=2,shareX=T) %>% layout(autosize = F, width = 900, height = 750)
+    plotly_POST(f,"2_Nicolas_Cage_001")
+```
+
+Nevertheless is it definitely a mixed picture. 2010 was a rather good year for Nicols Cage thanks to '**Kick-Ass**', but the deal could already have been made before financial issues became apparent. And in 2013 there was '**Snowden**' and '**The Croods**' in which Cage voice-acted. But it's safe to say that the last years aren't the most memorable years of his career. The average rating of the movies he acted in until 2009 is 6.2 while his most recent years average to 5.5.
+
+```{r testrating}
+    # Get mean of movie ratings before and after financial issues
+    mean(nicolasCageDT[[1]][Bankrupt==F,]$Rating)
+    mean(nicolasCageDT[[1]][Bankrupt==T,]$Rating)
+    
+    # Generate boxplot of Nicolas Cage's movie ratings and add mean as a red dot
+    i <- ggplot(nicolasCageDT[[1]], aes(y=Rating, x=Bankrupt, fill=Bankrupt)) + 
+        geom_boxplot() +
+        guides(fill=FALSE) + 
+        coord_flip() +
+        stat_summary(fun.y=mean, colour="darkred", geom="point", shape=19, size=5,show_guide = FALSE) +
+        theme(axis.title.x=element_blank(),axis.title.y=element_blank(), axis.text.y=element_blank(),axis.ticks.x=element_blank(),axis.ticks.y=element_blank(),legend.position="none") +
+        scale_y_continuous(limits = c(0, 10)) +
+        ggtitle("Nicolas Cage's IMDb user rating before and after financial issues")
+
+    ggplotly(i) %>% layout(autosize = F, width = 900, height = 375)
+    plotly_POST(i,"2_Nicolas_Cage_002")
+```
+
+Nicolas Cage is not the first celebrity or famous actor in the world whose financial fall was way steeper than the rise. I am not a celeb watcher but I did find some actors that went broke. According to [some sources](http://www.wonderwall.com/celebrity/profiles/pamela-anderson-michael-jackson-bankrupt-celebrities-33244.gallery?photoId=127986), Kim Basinger went broke in the early nineties because of legal battles over backing out of the lead role in '[Boxin Helena](http://www.imdb.com/title/tt0106471/?ref_=nv_sr_1)' and a a commercial failure regarding a village she was trying to turn into a tourist attraction. Burt Reynolds denies being broke but had to [sell off a lot of memorabilia](http://www.independent.co.uk/news/world/americas/burt-reynolds-from-bankable-to-broke-so-now-we-can-all-have-a-piece-of-him-9891796.html). Then there is [the very sad story](http://www.huffingtonpost.com/2013/02/15/brendan-fraser-broke-child-support_n_2696756.html) of '[Mummy](http://www.imdb.com/title/tt0120616/)' star Brendan Fraser. And then there's [Stephen Baldwin](http://www.dailymail.co.uk/news/article-3703643/Actor-Stephen-Baldwin-faces-foreclosure-New-York-home-bank-claims-blew-mortgage-payments-owes-1million.html) and [Gary Busey](http://www.avclub.com/article/gary-busey-may-be-broke-but-he-is-certainly-rich-i-69491).
+
+What if we consider all these actors as a sample of all the famous actors that went broke for some particular reason. Is a drop in user ratings a general consequence for actors that go broke? Or is the career of Nicolas Cage a unique case?
+
+The following plot shows the evolution of average yearly movie ratings for 6 actors that have gone through financial hardship. It shows the 10 years before and the 10 years after. As can be seen from the graph, it would be incorrect to generalize our earlier conclusion. Only Brendan Fraser & Nicolas Cage's yearly average seems to go down on first sight.
+
+```{r allplotData}
+    # Get data for additional actors that went broke
+    nicolasCageDT <- getActor("http://www.imdb.com/name/nm0000115",2009,"nicolasCageDT","Nicolas Cage")
+    burtReynoldsDT <- getActor("http://www.imdb.com/name/nm0000608",2014,"burtReynoldsDT","Burt Reynolds")
+    brendanFraserDT <- getActor("http://www.imdb.com/name/nm0000409",2007,"brendanFraserDT","Brendan Fraser")
+    kimBasingerDT <- getActor("http://www.imdb.com/name/nm0000107",1993,"kimBasingerDT","Kim Basinger")
+    stephenBaldwinDT <- getActor("http://www.imdb.com/name/nm0000286",2009,"stephenBaldwinDT","Stephen Baldwin")
+    garyBuseyDT <- getActor("http://www.imdb.com/name/nm0000997/",2012,"garyBuseyDT","Gary Busey")
+    
+    # Put all data of all the actors in a data table
+    allDT <- list()
+    allDT[[1]] <- data.table(rbind(nicolasCageDT[[1]],burtReynoldsDT[[1]],brendanFraserDT[[1]],kimBasingerDT[[1]],stephenBaldwinDT[[1]],garyBuseyDT[[1]]))
+    allDT[[2]] <- data.table(rbind(nicolasCageDT[[2]],burtReynoldsDT[[2]],brendanFraserDT[[2]],kimBasingerDT[[2]],stephenBaldwinDT[[2]],garyBuseyDT[[2]]))
+    allDT[[1]] <- allDT[[1]][!is.na(allDT[[1]]$Rating)]
+    allDT[[2]] <- allDT[[2]][!is.na(allDT[[2]]$Rating)]
+    
+    # Limit the graph to 20 years and generate line plot with x = year before or after issues and y = rating
+    twentyYears <- allDT[[2]][CohortYear >= (-10) & CohortYear <= 10,]
+    j <- ggplot(twentyYears,aes(x=CohortYear,y=Rating)) + 
+        geom_line(aes(colour=Actor)) + 
+        geom_vline(xintercept=0,colour="black",linetype="longdash") +
+        labs(x = "Years before and after/during financial issues",y="IMDb User Rating") +
+        theme(legend.position="bottom")
+    
+    ggplotly(j) %>% layout(autosize = F, width = 900, height = 375)
+    plotly_POST(j,"2_Nicolas_Cage_003")
+```
+
+The following plot shows the aggregated average of the 6 actors, broken down by the period before or after their financial problems reached the press. As can be seen from the plot, there is nearly no visual difference between the two plots. The tiny difference of 0.04 in favour of the **post**-financial problems period is statistically not significant[2^].
+
+```{r alltestrating}
+    # Normality tests for the normality assumptions of a t-test. Data is normal.
+    kurtosis(allDT[[1]]$Rating)
+    skewness(allDT[[1]]$Rating)
+    qqnorm(allDT[[1]]$Rating)
+    qqline(allDT[[1]]$Rating)
+    plot(density(allDT[[1]]$Rating))
+    
+    # Do a t.test
+    t.bankrupt <- t.test(allDT[[1]][Bankrupt==T]$Rating,allDT[[1]][Bankrupt==F]$Rating,var.eq=T)
+    t.bankrupt
+    
+    # Find mean difference in two groups
+    real <- mean(allDT[[1]][Bankrupt==T]$Rating)-mean(allDT[[1]][Bankrupt==F]$Rating)
+    
+    # Bootstrap for curiousity purposes
+    # More info on bootstrapping the mean difference:
+    # Zieffler, A. S., Harring, J. R., & Long, J. D. (2011). Comparing Groups: Randomization and Bootstrap Methods Using R. Hoboken, NJ: Wiley.
+    
+    # Count sample size of each group
+    nF <- nrow(allDT[[1]][Bankrupt==F])
+    nT <- nrow(allDT[[1]][Bankrupt==T])
+    
+    # Amount of bootstrapped samples
+    n <- 1000
+    
+    # Bootstrapping function that calculates the mean difference for each bootstrapped sample
+    mean.diff <- function(data,indices) {
+        data <- data[indices,]
+        mean(data[1:nT]$Rating) - mean(data[(nT+1):nF]$Rating)
+    }
+    
+    # Perform bootstrap using the boot library
+    myBoot <- boot(data=allDT[[1]], statistic=mean.diff ,R=n)
+    str(myBoot)
+    
+    # In which quartile is the mean difference? (More or less the same as non-bootstrapped t-test)
+    (length(myBoot$t[abs(myBoot$t)>=real])+1)/(n+1)
+    
+    # Generate boxplot with of movie ratings of the 6 actors
+    k <- ggplot(allDT[[1]], aes(y=Rating, x=Bankrupt, fill=Bankrupt)) + 
+        geom_boxplot() +
+        guides(fill=FALSE) + 
+        coord_flip() +
+        stat_summary(fun.y=mean, colour="darkred", geom="point", shape=19, size=5,show_guide = FALSE) +
+        theme(axis.title.x=element_blank(),axis.title.y=element_blank(), axis.text.y=element_blank(),axis.ticks.x=element_blank(),axis.ticks.y=element_blank(),legend.position="none") +
+        scale_y_continuous(limits = c(0, 10)) +
+        ggtitle("IMDb user rating before and after financial issues")
+    
+    ggplotly(k)
+    plotly_POST(k,"2_Nicolas_Cage_004")
+```
+[^1]: A movie is defined as a motion picture of more than 60 minutes.
+[^2]: One could argue about the criteria: Is "after" financial issues the same as "during" financial issues? Why not restrict the test to 5 years before and 5 years after? 

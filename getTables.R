@@ -1,4 +1,4 @@
-getTables <- function(bankruptActor) {
+getTables <- function(bankruptActor,nameOfActor) {
     url <- bankruptActor[[1]]
     bankrupt <- bankruptActor[[2]]
     
@@ -23,16 +23,16 @@ getTables <- function(bankruptActor) {
     if (!exists("listDetails")) { listDetails <- lapply(urlRating, function(x) fromJSON(x)) }
     
     # Rating
-    vRating <- sapply(listDetails, function(x) as.numeric(x$imdbRating))
+    vRating <- unlist(sapply(listDetails, function(x) as.numeric(x$imdbRating)))
     
     # Votes
-    vVotes <- sapply(listDetails, function(x) as.numeric(gsub(",","",x$imdbVotes)))
+    vVotes <- unlist(sapply(listDetails, function(x) as.numeric(gsub(",","",x$imdbVotes))))
     
     # Runtime
-    vRuntime <- sapply(listDetails, function(x) as.numeric(gsub(" min","",x$Runtime)))
+    vRuntime <- unlist(sapply(listDetails, function(x) as.numeric(gsub(" min","",x$Runtime))))
     
     # Metascore
-    vMeta <- sapply(listDetails, function(x) as.numeric(x$Metascore))
+    vMeta <- unlist(sapply(listDetails, function(x) as.numeric(x$Metascore)))
     
     # Bankrupt dummy
     vBankrupt <- ifelse(vYears > bankrupt,TRUE,FALSE)
@@ -41,13 +41,14 @@ getTables <- function(bankruptActor) {
     vCohortYear <- vYears - bankrupt
     
     # Make Movie-level Data Table
-    dt <- data.table(Title=vMovies, Year=vYears,Runtime=vRuntime,Rating=vRating,Votes=vVotes,Metascore=vMeta,Bankrupt=vBankrupt,CohortYear=vCohortYear)
+    dt <- data.table(Actor=rep(nameOfActor,length(vMovies)),Title=vMovies, Year=vYears,Runtime=vRuntime,Rating=vRating,Votes=vVotes,Metascore=vMeta,Bankrupt=vBankrupt,CohortYear=vCohortYear)
     
     # Only movies
     dt <- subset(dt,Runtime>60)
+    dt <- subset(dt,!is.na(Rating))
     
     # Make Year-level Data Table
-    dtYear <- dt[,.(Runtime=mean(Runtime),Rating=mean(Rating),Votes=mean(Votes),Metascore=mean(Metascore),Bankrupt=head(Bankrupt,1),CohortYear=head(CohortYear,1)),by=Year]
+    dtYear <- dt[,.(Actor=head(Actor),Runtime=mean(Runtime),Rating=mean(Rating),Votes=mean(Votes),Metascore=mean(Metascore),Bankrupt=head(Bankrupt,1),CohortYear=head(CohortYear,1)),by=Year]
     
     dataset <- list(dt,dtYear)
     dataset
