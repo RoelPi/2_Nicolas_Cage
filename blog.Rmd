@@ -68,7 +68,7 @@ How the career of Nicolas Cage evolved can be seen in the following grap: since 
     
     # Generate plots
     f <- subplot(p1,p2,nrows=2,shareX=T) %>% layout(autosize = F, width = 900, height = 750)
-    plotly_POST(f,"2_Nicolas_Cage_001")
+    # plotly_POST(f,"2_Nicolas_Cage_001")
 ```
 
 Nevertheless is it definitely a mixed picture. 2010 was a rather good year for Nicols Cage thanks to '**Kick-Ass**', but the deal could already have been made before financial issues became apparent. And in 2013 there was '**Snowden**' and '**The Croods**' in which Cage voice-acted. But it's safe to say that the last years aren't the most memorable years of his career. The average rating of the movies he acted in until 2009 is 6.2 while his most recent years average to 5.5.
@@ -89,7 +89,7 @@ Nevertheless is it definitely a mixed picture. 2010 was a rather good year for N
         ggtitle("Nicolas Cage's IMDb user rating before and after financial issues")
 
     ggplotly(i) %>% layout(autosize = F, width = 900, height = 375)
-    plotly_POST(i,"2_Nicolas_Cage_002")
+    # plotly_POST(i,"2_Nicolas_Cage_002")
 ```
 
 Nicolas Cage is not the first celebrity or famous actor in the world whose financial fall was way steeper than the rise. I am not a celeb watcher but I did find some actors that went broke. According to [some sources](http://www.wonderwall.com/celebrity/profiles/pamela-anderson-michael-jackson-bankrupt-celebrities-33244.gallery?photoId=127986), Kim Basinger went broke in the early nineties because of legal battles over backing out of the lead role in '[Boxin Helena](http://www.imdb.com/title/tt0106471/?ref_=nv_sr_1)' and a a commercial failure regarding a village she was trying to turn into a tourist attraction. Burt Reynolds denies being broke but had to [sell off a lot of memorabilia](http://www.independent.co.uk/news/world/americas/burt-reynolds-from-bankable-to-broke-so-now-we-can-all-have-a-piece-of-him-9891796.html). Then there is [the very sad story](http://www.huffingtonpost.com/2013/02/15/brendan-fraser-broke-child-support_n_2696756.html) of '[Mummy](http://www.imdb.com/title/tt0120616/)' star Brendan Fraser. And then there's [Stephen Baldwin](http://www.dailymail.co.uk/news/article-3703643/Actor-Stephen-Baldwin-faces-foreclosure-New-York-home-bank-claims-blew-mortgage-payments-owes-1million.html) and [Gary Busey](http://www.avclub.com/article/gary-busey-may-be-broke-but-he-is-certainly-rich-i-69491).
@@ -123,7 +123,7 @@ The following plot shows the evolution of average yearly movie ratings for 6 act
         theme(legend.position="bottom")
     
     ggplotly(j) %>% layout(autosize = F, width = 900, height = 375)
-    plotly_POST(j,"2_Nicolas_Cage_003")
+    # plotly_POST(j,"2_Nicolas_Cage_003")
 ```
 
 The following plot shows the aggregated average of the 6 actors, broken down by the period before or after their financial problems reached the press. As can be seen from the plot, there is nearly no visual difference between the two plots. The tiny difference of 0.04 in favour of the **post**-financial problems period is statistically not significant[2^].
@@ -136,12 +136,12 @@ The following plot shows the aggregated average of the 6 actors, broken down by 
     qqline(allDT[[1]]$Rating)
     plot(density(allDT[[1]]$Rating))
     
-    # Do a t.test
-    t.bankrupt <- t.test(allDT[[1]][Bankrupt==T]$Rating,allDT[[1]][Bankrupt==F]$Rating,var.eq=T)
+    # Do a t.test - unpaired as we are testing the movies, not the actors
+    t.bankrupt <- t.test(allDT[[1]][Bankrupt==T]$Rating,allDT[[1]][Bankrupt==F]$Rating,var.equal=F)
     t.bankrupt
+    real <- t.bankrupt$statistic
     
     # Find mean difference in two groups
-    real <- mean(allDT[[1]][Bankrupt==T]$Rating)-mean(allDT[[1]][Bankrupt==F]$Rating)
     
     # Bootstrap for curiousity purposes
     # More info on bootstrapping the mean difference:
@@ -154,18 +154,17 @@ The following plot shows the aggregated average of the 6 actors, broken down by 
     # Amount of bootstrapped samples
     n <- 1000
     
-    # Bootstrapping function that calculates the mean difference for each bootstrapped sample
-    mean.diff <- function(data,indices) {
-        data <- data[indices,]
-        mean(data[1:nT]$Rating) - mean(data[(nT+1):nF]$Rating)
+    # Bootstrapping function that calculates t tests
+    doTTest <- function(data,indices) {
+        d <- data[indices,]
+        c(t.test(d[1:nT]$Rating, d[(nT+1):nF]$Rating, var.eq=T)$statistic,t.test(d[1:nT]$Rating, d[(nT+1):nF]$Rating, var.eq=T)$p.value)
     }
     
     # Perform bootstrap using the boot library
-    myBoot <- boot(data=allDT[[1]], statistic=mean.diff ,R=n)
-    str(myBoot)
+    myBoot <- boot(data=allDT[[1]], statistic=doTTest ,R=n)
     
-    # In which quartile is the mean difference? (More or less the same as non-bootstrapped t-test)
-    (length(myBoot$t[abs(myBoot$t)>=real])+1)/(n+1)
+    # In which quartile is the measured t stat? (More or less the same as non-bootstrapped t-test)
+    mean(abs(myBoot$t[,1]) >= real)
     
     # Generate boxplot with of movie ratings of the 6 actors
     k <- ggplot(allDT[[1]], aes(y=Rating, x=Bankrupt, fill=Bankrupt)) + 
@@ -178,7 +177,7 @@ The following plot shows the aggregated average of the 6 actors, broken down by 
         ggtitle("IMDb user rating before and after financial issues")
     
     ggplotly(k)
-    plotly_POST(k,"2_Nicolas_Cage_004")
+    # plotly_POST(k,"2_Nicolas_Cage_004")
 ```
 [^1]: A movie is defined as a motion picture of more than 60 minutes.
 [^2]: One could argue about the criteria: Is "after" financial issues the same as "during" financial issues? Why not restrict the test to 5 years before and 5 years after? 
